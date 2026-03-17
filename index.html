@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calibrating Trust in Agentic AI — Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;min-height:100vh;padding:2rem 1rem;color:#1a1a18}
+#exp{max-width:600px;margin:0 auto;padding:0 0 2rem}
+.card{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:1.25rem 1.5rem;margin:0 0 .75rem}
+.h1{font-size:20px;font-weight:500;color:#1a1a18}
+.sm{font-size:13px;color:#666}
+.bdg{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500}
+.bi{background:#e6f1fb;color:#185fa5}
+.bm{background:#f1efe8;color:#5f5e5a}
+.dot{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ds{background:#eaf3de;color:#3b6d11}
+.df{background:#fcebeb;color:#a32d2d}
+.dq{background:#f1efe8;color:#5f5e5a}
+.pb{height:4px;background:#f1efe8;border-radius:2px;overflow:hidden;margin:.5rem 0}
+.pf{height:100%;background:#888780;border-radius:2px;transition:width .4s}
+.met{background:#f5f4f0;border-radius:8px;padding:12px;text-align:center}
+.mv{font-size:24px;font-weight:500}
+.ml{font-size:11px;color:#666;margin-top:4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.sep{height:0.5px;background:rgba(0,0,0,0.1);margin:.75rem 0}
+.row{display:flex;align-items:center;gap:10px}
+.f1{flex:1}
+.air{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f5f4f0;border-radius:8px}
+.fi{animation:fi .25s ease}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+button{cursor:pointer;padding:9px 16px;border-radius:8px;border:0.5px solid rgba(0,0,0,0.2);background:transparent;font-size:14px;font-family:inherit;color:#1a1a18;transition:background .15s}
+button:hover{background:#f1efe8}
+input[type=range]{accent-color:#185fa5;width:100%}
+</style>
+</head>
+<body>
+<div id="exp"><div id="expS"></div></div>
+<script>
+const C={AI1:.9,AI2:.8,NS:.05,BS:5,BL:3};
+let S={ph:'intro',a:{blk:0,est:50,hist:[]},b:{blk:0,est:50,hist:[]},p2:{trials:[],cur:null,bi:0,blkEst:50,blkEsts:[]}};
+const rnd=p=>Math.random()<p;
+const normP=(a1,a2)=>(!a1||!a2)?0:Math.round((1-C.NS)*100);
+function brier(pairs){if(!pairs.length)return'–';return(pairs.reduce((s,{p,o})=>s+Math.pow(p/100-o,2),0)/pairs.length).toFixed(3);}
+function pbar(n){return`<div class="pb"><div class="pf" style="width:${Math.round(n/C.BL*100)}%"></div></div>`}
+function dots(os){return`<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:.75rem 0">${os.map(o=>`<div class="dot ${o?'ds':'df'}">${o?'✓':'✗'}</div>`).join('')}</div>`}
+
+function fcast(w){
+  const d=w==='a'?S.a:S.b,nm=w==='a'?'AI-Alpha':'AI-Beta',ph=w==='a'?'1':'2';
+  const hist=d.hist.length?`<div style="padding:8px 12px;background:#f5f4f0;border-radius:8px;margin:.5rem 0 .75rem">
+<div class="sm" style="margin-bottom:8px">Previous blocks — blue: estimate · green: actual</div>
+<div style="display:flex;align-items:flex-end;height:48px;gap:8px">
+${d.hist.map((h,i)=>{const ep=h.est,ap=Math.round(h.actual/C.BS*100);return`<div style="flex:1;position:relative;height:100%">
+<div style="position:absolute;bottom:0;width:46%;left:0;height:${Math.round(ep*.44)}px;background:#b5d4f4;border-radius:2px 2px 0 0"></div>
+<div style="position:absolute;bottom:0;width:46%;right:0;height:${Math.round(ap*.44)}px;background:#c0dd97;border-radius:2px 2px 0 0"></div>
+<span style="position:absolute;top:-14px;font-size:10px;color:#888;width:100%;text-align:center">B${i+1}</span>
+</div>`;}).join('')}</div></div>`:'';
+  return`<div class="card fi">
+<div class="row" style="margin-bottom:8px"><span class="bdg bm">Phase ${ph} of 3</span><span class="f1"></span><span class="sm">Block ${d.blk+1} of ${C.BL}</span></div>
+${pbar(d.blk)}
+<h1 class="h1" style="margin:8px 0 .5rem">Learning ${nm}</h1>
+<p class="sm" style="margin-bottom:.75rem">Block ${d.blk+1}: ${C.BS} social media posts ready for ${w==='a'?'text':'visual'} analysis.</p>
+${hist}
+<div class="sep"></div>
+<p class="sm" style="margin:.5rem 0 6px">Before deploying — how often will ${nm} succeed on the next ${C.BS} posts?</p>
+<div style="display:flex;align-items:center;gap:10px;margin:.5rem 0">
+<span class="sm">0%</span>
+<input type="range" min="0" max="100" step="5" value="${d.est}" style="flex:1" oninput="S.${w}.est=+this.value;document.getElementById('ev${w}').textContent=this.value+'%'">
+<span class="sm">100%</span></div>
+<div style="text-align:center;margin:.25rem 0 1rem">
+<span id="ev${w}" style="font-size:28px;font-weight:500">${d.est}%</span>
+<div class="sm">your estimate for next ${C.BS} trials</div></div>
+<button onclick="runBlk('${w}')">Deploy ${nm} on ${C.BS} posts →</button>
+</div>`;}
+
+function running(w){
+  const d=w==='a'?S.a:S.b,nm=w==='a'?'AI-Alpha':'AI-Beta',ph=w==='a'?'1':'2';
+  const h=d.hist[d.hist.length-1],ap=Math.round(h.actual/C.BS*100),diff=ap-h.est;
+  const dc=Math.abs(diff)<=10?'#3b6d11':Math.abs(diff)<=25?'#ba7517':'#a32d2d';
+  return`<div class="card fi">
+<div class="row" style="margin-bottom:8px"><span class="bdg bm">Phase ${ph} of 3</span><span class="f1"></span><span class="sm">Block ${d.blk} of ${C.BL} — Results</span></div>
+${pbar(d.blk)}
+<h1 class="h1" style="margin:8px 0 .75rem">${nm} — Block ${d.blk}</h1>
+${dots(h.outcomes)}
+<div class="g3" style="margin:.5rem 0">
+<div class="met"><div class="mv">${h.est}%</div><div class="ml">your estimate</div></div>
+<div class="met"><div class="mv">${ap}%</div><div class="ml">actual (${h.actual}/${C.BS})</div></div>
+<div class="met"><div class="mv" style="color:${dc}">${diff>0?'+':''}${diff}%</div><div class="ml">error</div></div>
+</div>
+<p class="sm" style="line-height:1.5;margin-bottom:.75rem">${Math.abs(diff)<=10?'Good calibration on this block.':`${diff<0?'You overestimated — adjust your next estimate downward.':'You underestimated — adjust your next estimate upward.'}`}</p>
+<button onclick="cont('${w}')">${d.blk>=C.BL?'See Phase Summary →':'Next Block →'}</button>
+</div>`;}
+
+function phfb(w){
+  const d=w==='a'?S.a:S.b,nm=w==='a'?'AI-Alpha':'AI-Beta',ph=w==='a'?'1':'2';
+  const avgE=Math.round(d.hist.reduce((a,h)=>a+h.est,0)/d.hist.length);
+  const avgA=Math.round(d.hist.reduce((a,h)=>a+h.actual,0)/d.hist.length/C.BS*100);
+  const bs=brier(d.hist.map(h=>({p:h.est,o:h.actual/C.BS})));
+  return`<div class="card fi">
+<p class="bdg bi" style="margin-bottom:12px">Phase ${ph} of 3 — Complete</p>
+<h1 class="h1" style="margin:6px 0 .5rem">${nm} — Summary</h1>
+<div class="g3" style="margin:.75rem 0">
+<div class="met"><div class="mv">${avgE}%</div><div class="ml">avg estimate</div></div>
+<div class="met"><div class="mv">${avgA}%</div><div class="ml">actual rate</div></div>
+<div class="met"><div class="mv">${bs}</div><div class="ml">Brier score ↓</div></div>
+</div>
+<div style="padding:10px 12px;background:#f5f4f0;border-radius:8px;margin:.75rem 0">
+<div class="sm" style="font-weight:500;margin-bottom:8px">Block calibration — blue: estimate · green: actual</div>
+<div style="display:flex;align-items:flex-end;height:60px;gap:10px">
+${d.hist.map((h,i)=>{const ep=h.est,ap=Math.round(h.actual/C.BS*100);return`<div style="flex:1;position:relative;height:100%">
+<div style="position:absolute;bottom:0;width:46%;left:0;height:${Math.round(ep*.55)}px;background:#b5d4f4;border-radius:2px 2px 0 0"></div>
+<div style="position:absolute;bottom:0;width:46%;right:0;height:${Math.round(ap*.55)}px;background:#c0dd97;border-radius:2px 2px 0 0"></div>
+<span style="position:absolute;top:-14px;font-size:10px;color:#888;width:100%;text-align:center">B${i+1}</span>
+</div>`;}).join('')}</div></div>
+<p class="sm" style="line-height:1.5;margin-top:10px">${Math.abs(avgE-avgA)<=5?`Your estimates closely tracked ${nm}'s actual rate.`:`True rate ≈ ${avgA}%. ${avgE>avgA?'You tended to overestimate reliability.':'You tended to underestimate reliability.'}`}</p>
+</div>
+<button onclick="go('${w==='a'?'b_f':'p2_intro'}')">
+${w==='a'?'Continue to Phase 2: Learning AI-Beta →':'Continue to Phase 3: Full System →'}
+</button></div>`;}
+
+const screens={
+  intro(){return`<div class="card fi">
+<p class="bdg bm" style="margin-bottom:12px">Calibration Study — Demo</p>
+<h1 class="h1" style="margin:6px 0 .5rem">Multimodal Content Moderation</h1>
+<p class="sm" style="margin:6px 0 1rem;line-height:1.6">You are overseeing an AI pipeline that reviews social media posts for policy violations. Three AI agents work in concert to make each decision.</p>
+<div class="sep"></div>
+<div style="display:flex;flex-direction:column;gap:6px;margin:.75rem 0">
+${[['α','AI-Alpha','Text analysis — reviews written post content'],['β','AI-Beta','Visual analysis — reviews images and video'],['γ','AI-Gamma','Merger — combines both analyses (noisy step)']].map(([l,n,r])=>`<div class="air"><div class="dot dq" style="font-size:13px">${l}</div><div><div style="font-size:14px;font-weight:500">${n}</div><div class="sm">${r}</div></div></div>`).join('')}
+</div>
+<div class="sep"></div>
+<p class="sm" style="line-height:1.6;margin-bottom:1rem">You'll learn each AI's reliability individually across 3 blocks of 5 posts, then supervise the full pipeline. Your goal: <strong style="font-weight:500">predict when the system will succeed</strong> using a probability estimate.</p>
+<button onclick="go('a_f')">Begin — Phase 1: Learning AI-Alpha →</button>
+</div>`;},
+  a_f(){return fcast('a')},b_f(){return fcast('b')},
+  a_r(){return running('a')},b_r(){return running('b')},
+  a_fb(){return phfb('a')},b_fb(){return phfb('b')},
+
+  p2_intro(){return`<div class="card fi">
+<p class="bdg bm" style="margin-bottom:12px">Phase 3 of 3</p>
+<h1 class="h1" style="margin:6px 0 .5rem">Full System — Noisy-AND Structure</h1>
+<p class="sm" style="line-height:1.6;margin-bottom:.75rem">You've observed both components. Now supervise the complete pipeline.</p>
+<div style="padding:12px;background:#f5f4f0;border-radius:8px;margin:.75rem 0">
+<div class="sm" style="font-weight:500;margin-bottom:10px">Causal structure</div>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="padding:6px 10px;border:0.5px solid rgba(0,0,0,0.15);border-radius:8px;font-size:12px">AI-Alpha<br><span style="color:#888">text</span></div>
+<div style="padding:6px 10px;border:0.5px solid rgba(0,0,0,0.15);border-radius:8px;font-size:12px">AI-Beta<br><span style="color:#888">visual</span></div>
+</div>
+<span style="color:#888;font-size:20px;padding:0 2px">→</span>
+<div style="padding:6px 10px;border:0.5px solid rgba(0,0,0,0.15);border-radius:8px;font-size:12px">AI-Gamma<br><span style="color:#888">merge (noisy)</span></div>
+<span style="color:#888;font-size:20px;padding:0 2px">→</span>
+<div style="padding:6px 10px;border:0.5px solid rgba(0,0,0,0.3);border-radius:8px;font-size:12px;font-weight:500">System</div>
+</div>
+<p class="sm" style="margin-top:10px;line-height:1.5">The system succeeds only if <strong style="font-weight:500">both</strong> Alpha and Beta succeed, and Gamma's merge step completes without error (Gamma can fail independently).</p>
+</div>
+<div class="sep"></div>
+<p class="sm" style="line-height:1.5;margin-bottom:1rem">Before each block of ${C.BS} trials you'll estimate the system's success rate, then observe outcomes trial-by-trial and receive calibration feedback. True component probabilities are not revealed — use what you learned in Phases 1–2.</p>
+<button onclick="go('p2_blk_est')">Begin — Block 1 Forecast →</button>
+</div>`;},
+
+  p2_blk_est(){
+    const blk=S.p2.blkEsts.length+1,hist=S.p2.blkEsts;
+    const prevChart=hist.length?`<div style="padding:8px 12px;background:#f5f4f0;border-radius:8px;margin:.5rem 0 .75rem">
+<div class="sm" style="margin-bottom:8px">Previous blocks — blue: estimate · green: actual</div>
+<div style="display:flex;align-items:flex-end;height:48px;gap:8px">
+${hist.map((h,i)=>{const ep=h.est,ap=h.actual;return`<div style="flex:1;position:relative;height:100%">
+<div style="position:absolute;bottom:0;width:46%;left:0;height:${Math.round(ep*.44)}px;background:#b5d4f4;border-radius:2px 2px 0 0"></div>
+<div style="position:absolute;bottom:0;width:46%;right:0;height:${Math.round(ap*.44)}px;background:#c0dd97;border-radius:2px 2px 0 0"></div>
+<span style="position:absolute;top:-14px;font-size:10px;color:#888;width:100%;text-align:center">B${i+1}</span>
+</div>`;}).join('')}</div></div>`:'';
+    return`<div class="card fi">
+<div class="row" style="margin-bottom:8px"><span class="bdg bm">Phase 3 of 3</span><span class="f1"></span><span class="sm">Block ${blk} of ${C.BL} — Forecast</span></div>
+${pbar((blk-1)/C.BL*C.BS*C.BL)}
+<h1 class="h1" style="margin:8px 0 .5rem">System Block ${blk} Forecast</h1>
+<p class="sm" style="margin-bottom:.75rem">Before observing the next ${C.BS} posts — how often will the full pipeline succeed?</p>
+${prevChart}
+<div class="sep"></div>
+<p class="sm" style="margin:.5rem 0 6px">Your system success estimate for the next ${C.BS} trials:</p>
+<div style="display:flex;align-items:center;gap:10px;margin:.5rem 0">
+<span class="sm">0%</span>
+<input type="range" min="0" max="100" step="5" value="${S.p2.blkEst}" style="flex:1" oninput="S.p2.blkEst=+this.value;document.getElementById('p2be').textContent=this.value+'%'">
+<span class="sm">100%</span></div>
+<div style="text-align:center;margin:.25rem 0 1rem">
+<span id="p2be" style="font-size:28px;font-weight:500">${S.p2.blkEst}%</span>
+<div class="sm">your estimate for next ${C.BS} system trials</div></div>
+<button onclick="startBlock()">Deploy Block ${blk} →</button>
+</div>`;},
+
+  p2_trial(){
+    const n=S.p2.trials.length+1,total=C.BS*C.BL,cur=S.p2.cur;
+    if(!cur)return`<div class="card fi">
+<div class="row" style="margin-bottom:8px"><span class="bdg bm">Phase 3 of 3</span><span class="f1"></span><span class="sm">Trial ${n} of ${total}</span></div>
+${pbar(S.p2.bi*C.BS)}
+<h1 class="h1" style="margin:8px 0 .5rem">System Trial ${n}</h1>
+<p class="sm" style="margin-bottom:1rem">Post #${n} is queued for review.</p>
+<button onclick="deploy()">Deploy AI-Alpha & AI-Beta →</button>
+</div>`;
+    const{ai1,ai2,sys,revealed,userEst=50}=cur;
+    if(!revealed)return`<div class="card fi">
+<div class="row" style="margin-bottom:8px"><span class="bdg bm">Phase 3 of 3</span><span class="f1"></span><span class="sm">Trial ${n} of ${total}</span></div>
+<h1 class="h1" style="margin:8px 0 .75rem">Component Results</h1>
+<div style="display:flex;flex-direction:column;gap:6px;margin:.5rem 0 .75rem">
+<div class="air fi"><div class="dot ${ai1?'ds':'df'}">${ai1?'✓':'✗'}</div><div><div style="font-size:14px;font-weight:500">AI-Alpha: ${ai1?'Succeeded':'Failed'}</div><div class="sm">text analysis complete</div></div></div>
+<div class="air fi" style="animation-delay:.08s"><div class="dot ${ai2?'ds':'df'}">${ai2?'✓':'✗'}</div><div><div style="font-size:14px;font-weight:500">AI-Beta: ${ai2?'Succeeded':'Failed'}</div><div class="sm">visual analysis complete</div></div></div>
+</div>
+<div class="sep"></div>
+<p class="sm" style="margin:.5rem 0 6px">AI-Gamma will now merge these results. What's the probability the final system decision is correct?</p>
+<div style="display:flex;align-items:center;gap:10px;margin:.5rem 0">
+<span class="sm">0%</span>
+<input type="range" min="0" max="100" step="5" value="${userEst}" style="flex:1" oninput="S.p2.cur.userEst=+this.value;document.getElementById('p2te').textContent=this.value+'%'">
+<span class="sm">100%</span></div>
+<div style="text-align:center;margin:.25rem 0 1rem">
+<span id="p2te" style="font-size:28px;font-weight:500">${userEst}%</span>
+<div class="sm">your probability estimate for system success</div></div>
+<button onclick="reveal()">Submit & Reveal System Outcome →</button>
+</div>`;
+    const norm=normP(ai1,ai2),diff=Math.abs(userEst-norm);
+    const dc=diff<=10?'#3b6d11':diff<=25?'#ba7517':'#a32d2d';
+    const why=(!ai1&&!ai2)?'Both AIs failed — AND structure → system success probability = 0%.':!ai1?'AI-Alpha failed — AND structure → system success probability = 0%.':!ai2?'AI-Beta failed — AND structure → system success probability = 0%.':`Both succeeded. AI-Gamma can still fail independently. Normative ≈ ${Math.round((1-C.NS)*100)}%.`;
+    const atEnd=S.p2.trials.length>0&&S.p2.trials.length%C.BS===0;
+    return`<div class="card fi">
+<div class="row" style="margin-bottom:8px"><span class="bdg bm">Phase 3 of 3</span><span class="f1"></span><span class="sm">Trial ${n} of ${total} — Outcome</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;margin:.75rem 0">
+<div class="air"><div class="dot ${ai1?'ds':'df'}">${ai1?'✓':'✗'}</div><div style="font-size:14px;font-weight:500">AI-Alpha: ${ai1?'Succeeded':'Failed'}</div></div>
+<div class="air"><div class="dot ${ai2?'ds':'df'}">${ai2?'✓':'✗'}</div><div style="font-size:14px;font-weight:500">AI-Beta: ${ai2?'Succeeded':'Failed'}</div></div>
+<div class="air" style="border:0.5px solid ${sys?'#639922':'#e24b4a'}"><div class="dot ${sys?'ds':'df'}" style="font-size:13px">γ</div><div><div style="font-size:14px;font-weight:500">System: ${sys?'Succeeded':'Failed'}</div><div class="sm">final decision</div></div></div>
+</div>
+<div class="g3" style="margin:.5rem 0">
+<div class="met"><div class="mv">${userEst}%</div><div class="ml">your estimate</div></div>
+<div class="met"><div class="mv">${norm}%</div><div class="ml">normative</div></div>
+<div class="met"><div class="mv" style="color:${dc}">${diff<=5?'✓ good':diff<=20?'~ close':'✗ off'}</div><div class="ml">calibration</div></div>
+</div>
+<div style="padding:8px 12px;background:#f5f4f0;border-radius:8px;margin:.5rem 0">
+<p class="sm" style="line-height:1.5"><strong style="font-weight:500">Why ${norm}%?</strong> ${why}</p>
+</div>
+<button style="margin-top:.5rem" onclick="nextTrial()">${atEnd?'See Block Feedback →':'Next Trial →'}</button>
+</div>`;},
+
+  p2_fb(){
+    const bt=S.p2.trials.slice(-C.BS),done=S.p2.trials.length,rem=C.BS*C.BL-done;
+    const bs=brier(bt.map(t=>({p:t.userEst,o:t.sys?1:0})));
+    const blkHist=S.p2.blkEsts[S.p2.bi-1]||{};
+    const blkEst=blkHist.est!==undefined?blkHist.est:'–';
+    const actR=Math.round(bt.filter(t=>t.sys).length/bt.length*100);
+    const blkDiff=blkEst!=='–'?actR-blkEst:null;
+    const blkDc=blkDiff===null?'#888':Math.abs(blkDiff)<=10?'#3b6d11':Math.abs(blkDiff)<=25?'#ba7517':'#a32d2d';
+    return`<div class="card fi">
+<p class="bdg bi" style="margin-bottom:12px">Block ${S.p2.bi} of ${C.BL} — Feedback</p>
+<h1 class="h1" style="margin:6px 0 .5rem">System Block ${S.p2.bi}</h1>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin:.75rem 0">
+<div class="met"><div class="mv">${blkEst}%</div><div class="ml">block estimate</div></div>
+<div class="met"><div class="mv">${actR}%</div><div class="ml">actual rate</div></div>
+<div class="met"><div class="mv" style="color:${blkDc}">${blkDiff!==null?(blkDiff>0?'+':'')+blkDiff+'%':'–'}</div><div class="ml">block error</div></div>
+<div class="met"><div class="mv">${bs}</div><div class="ml">Brier score ↓</div></div>
+</div>
+<div style="padding:10px 12px;background:#f5f4f0;border-radius:8px;margin:.75rem 0">
+<div class="sm" style="font-weight:500;margin-bottom:8px">Trial-by-trial — α β outcomes + your estimate vs. normative</div>
+${bt.map((t,i)=>{
+  const norm=normP(t.ai1,t.ai2),diff=Math.abs(t.userEst-norm);
+  const c=diff<=10?'#3b6d11':diff<=25?'#ba7517':'#a32d2d';
+  return`<div style="display:flex;align-items:center;gap:8px;margin:4px 0">
+<span class="sm" style="min-width:44px">T${done-C.BS+i+1}</span>
+<span class="dot ${t.ai1?'ds':'df'}" style="width:20px;height:20px;font-size:10px">${t.ai1?'✓':'✗'}</span>
+<span class="dot ${t.ai2?'ds':'df'}" style="width:20px;height:20px;font-size:10px">${t.ai2?'✓':'✗'}</span>
+<span class="sm f1">est: ${t.userEst}% · norm: ${norm}%</span>
+<span style="font-size:12px;color:${c}">${diff<=10?'✓ good':diff<=25?'~ close':'✗ off'}</span>
+</div>`;}).join('')}
+</div>
+<p class="sm" style="line-height:1.5;margin-bottom:1rem">Key rule: if either component fails → normative = 0%; if both succeed → normative ≈ ${Math.round((1-C.NS)*100)}%.</p>
+<button onclick="go('${rem>0?'p2_blk_est':'results'}')">
+${rem>0?`Continue — Block ${S.p2.bi+1} Forecast →`:'View Final Results →'}
+</button></div>`;},
+
+  results(){
+    const all=S.p2.trials,bs=brier(all.map(t=>({p:t.userEst,o:t.sys?1:0})));
+    const fA=S.a.hist.length?S.a.hist[S.a.hist.length-1].est:50;
+    const fB=S.b.hist.length?S.b.hist[S.b.hist.length-1].est:50;
+    const norm=Math.round(C.AI1*C.AI2*(1-C.NS)*100);
+    const both=all.filter(t=>t.ai1&&t.ai2),fail=all.filter(t=>!t.ai1||!t.ai2);
+    const avgB=both.length?Math.round(both.reduce((a,t)=>a+t.userEst,0)/both.length):'–';
+    const avgF=fail.length?Math.round(fail.reduce((a,t)=>a+t.userEst,0)/fail.length):'–';
+    const initEst=S.p2.blkEsts.length?S.p2.blkEsts[0].est:'–';
+    return`<div class="card fi">
+<p class="bdg bi" style="margin-bottom:12px">Experiment Complete</p>
+<h1 class="h1" style="margin:6px 0 .5rem">Your Calibration Summary</h1>
+<div class="sep"></div>
+<p class="sm" style="margin:.5rem 0 6px;font-weight:500">Component learning (Phase 1–2)</p>
+<div class="g2" style="margin-bottom:.75rem">
+<div class="met"><div class="mv">${fA}%</div><div class="ml">final AI-Alpha estimate<br><span style="color:#aaa">true: ${Math.round(C.AI1*100)}%</span></div></div>
+<div class="met"><div class="mv">${fB}%</div><div class="ml">final AI-Beta estimate<br><span style="color:#aaa">true: ${Math.round(C.AI2*100)}%</span></div></div>
+</div>
+<div class="sep"></div>
+<p class="sm" style="margin:.5rem 0 6px;font-weight:500">System calibration (Phase 3)</p>
+<div class="g3" style="margin-bottom:.75rem">
+<div class="met"><div class="mv">${initEst}%</div><div class="ml">block 1 estimate</div></div>
+<div class="met"><div class="mv">${norm}%</div><div class="ml">normative<br><span style="font-size:10px;color:#aaa">${Math.round(C.AI1*100)}%×${Math.round(C.AI2*100)}%×${Math.round((1-C.NS)*100)}%</span></div></div>
+<div class="met"><div class="mv">${bs}</div><div class="ml">overall Brier score</div></div>
+</div>
+<div style="padding:10px 12px;background:#f5f4f0;border-radius:8px;margin:.75rem 0">
+<div class="sm" style="font-weight:500;margin-bottom:8px">Conditional calibration — the core test</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div class="row">
+<span class="dot ds" style="width:22px;height:22px;font-size:11px">✓</span>
+<span class="dot ds" style="width:22px;height:22px;font-size:11px">✓</span>
+<span class="sm f1">Both succeed → you avg'd <strong style="font-weight:500">${avgB}%</strong> · normative: ${Math.round((1-C.NS)*100)}%</span>
+</div>
+<div class="row">
+<span class="sm" style="color:#888;min-width:52px">≥1 fails</span>
+<span class="sm f1">Either fails → you avg'd <strong style="font-weight:500">${avgF}%</strong> · normative: 0%</span>
+</div>
+</div>
+<p class="sm" style="margin-top:8px;line-height:1.5;color:#888">Perfect calibration: ~${Math.round((1-C.NS)*100)}% when both succeed · 0% when either fails.</p>
+</div>
+</div>`;}
+};
+
+function go(ph){S.ph=ph;if(ph==='p2_trial'||ph==='p2_blk_est')S.p2.cur=null;render();}
+function startBlock(){
+  S.p2.blkEsts.push({est:S.p2.blkEst});
+  S.p2.cur=null;S.ph='p2_trial';render();}
+function runBlk(w){
+  const d=w==='a'?S.a:S.b,p=w==='a'?C.AI1:C.AI2;
+  const outcomes=Array.from({length:C.BS},()=>rnd(p));
+  d.hist.push({est:d.est,outcomes,actual:outcomes.filter(Boolean).length});
+  d.blk++;S.ph=`${w}_r`;render();}
+function cont(w){const d=w==='a'?S.a:S.b;S.ph=d.blk>=C.BL?`${w}_fb`:`${w}_f`;render();}
+function deploy(){
+  const ai1=rnd(C.AI1),ai2=rnd(C.AI2),sys=ai1&&ai2&&!rnd(C.NS);
+  S.p2.cur={ai1,ai2,sys,revealed:false,userEst:50};render();}
+function reveal(){
+  if(!S.p2.cur)return;
+  S.p2.cur.revealed=true;
+  S.p2.trials.push({ai1:S.p2.cur.ai1,ai2:S.p2.cur.ai2,sys:S.p2.cur.sys,userEst:S.p2.cur.userEst});
+  render();}
+function nextTrial(){
+  const done=S.p2.trials.length;
+  if(done%C.BS===0&&done>0){
+    S.p2.bi=done/C.BS;
+    const bt=S.p2.trials.slice(-C.BS);
+    const actR=Math.round(bt.filter(t=>t.sys).length/bt.length*100);
+    if(S.p2.blkEsts[S.p2.bi-1])S.p2.blkEsts[S.p2.bi-1].actual=actR;
+    S.ph='p2_fb';
+  } else{S.p2.cur=null;S.ph='p2_trial';}
+  render();}
+function render(){document.getElementById('expS').innerHTML=(screens[S.ph]||screens.intro)();}
+render();
+</script>
+</body>
+</html>
